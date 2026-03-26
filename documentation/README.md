@@ -37,7 +37,15 @@ Below are example steps that may require modification for specific local install
 
    FLIBS=-L/opt/homebrew/Cellar/gcc/15.2.0_1/lib/gcc/$(VER) -lgfortran -lquadmath -lm
    ```
-6) 
+6) Restart your R or Rstudio session and install the libraries
+   ```r
+  devtools::install_github("ashiklom/rrtm")
+  install.packages(c("here", "dplyr", "coda", "distributions3", "BayesianTools"))
+   ```
+7) Test load rrtm to confirm its installed correctly
+
+8) Run  a test script
+
+### Linux x64 - Airborne SMCE pcluster
 
 
-### Linux x64

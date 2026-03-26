@@ -1,0 +1,16 @@
+"Spectra_Name","Location","Instrument","Species_Code","Genus","Species","Canopy_position","PLSR_LeafAge_days","Measurement_Date","Leaf_VIS_Spectral_Absorption"
+"BNL10991","PA-PNM","SE_PSRPlus","ANACEX","Anacardium","excelsum","sunlit","121.748950110896","20160314",0.920711384050594
+"BNL10401","PA-PNM","SVC_HR-1024i","ALBIAD","Albizia","adinocephala","sunlit","80.4439434395519","20160213",0.903698246597559
+"BNL11004","PA-PNM","SE_PSRPlus","ANTITR","Pittoniotis","trichantha","sunlit","175.026670948942","20160314",0.858045745074951
+"BNL10402","PA-PNM","SVC_HR-1024i","CAL2CA","Calycophyllum","candidissimum","sunlit","126.151706379077","20160213",0.920425532226217
+"BNL11055","PA-PNM","SE_PSRPlus","ALBIAD","Albizia","adinocephala","sunlit","115.346330886994","20160314",0.876820795322187
+"BNL10403","PA-PNM","SVC_HR-1024i","ANTITR","Pittoniotis","trichantha","sunlit","134.313416060925","20160213",0.887599657359732
+"BNL11062","PA-PNM","SE_PSRPlus","CAL2CA","Calycophyllum","candidissimum","sunlit","100.185000848391","20160314",0.822368756229053
+"BNL10404","PA-PNM","SVC_HR-1024i","CAL2CA","Calycophyllum","candidissimum","sunlit","127.259674655176","20160213",0.927120205861555
+"BNL11063","PA-PNM","SE_PSRPlus","CAL2CA","Calycophyllum","candidissimum","sunlit","105.869943173515","20160314",0.905992096356998
+"BNL10405","PA-PNM","SVC_HR-1024i","CASTEL","Castilla","elastica","sunlit","102.614697977629","20160213",0.915177613109368
+"BNL11064","PA-PNM","SE_PSRPlus","FICUIN","Ficus","insipida","sunlit","84.2156242964871","20160314",0.927507914374155
+"BNL10406","PA-PNM","SVC_HR-1024i","CASTEL","Castilla","elastica","sunlit","122.351325260659","20160213",0.919173545087189
+"BNL11065","PA-PNM","SE_PSRPlus","CAL2CA","Calycophyllum","candidissimum","sunlit","102.073019839183","20160314",0.884500768772912
+"BNL10407","PA-PNM","SVC_HR-1024i","CASTEL","Castilla","elastica","sunlit","128.370816055707","20160213",0.912715744551429
+"BNL11066","PA-PNM","SE_PSRPlus","CASTEL","Castilla","elastica","sunlit","84.3970996618613","20160314",0.872607181697789

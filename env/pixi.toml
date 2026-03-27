@@ -1,0 +1,44 @@
+[workspace]
+authors = ["serbinsh <shawn.p.serbin@nasa.gov>", "CQuinn8 <cquinn8@umd.edu>"]
+channels = ["conda-forge"]
+name = "rt_tools"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[tasks]
+setup-makevars = "bash setup_makevars.sh"
+install-dev-packages = "Rscript install_rt_tools_dev_packages.R"
+test-setup = "Rscript test_rrtm.R"
+
+[dependencies]
+# R and essential packages
+r-base = ">=4"
+r-devtools = "*"
+r-remotes = "*"
+r-pak = "*"
+
+# compilation packages
+gcc_linux-64 = "*"
+gxx_linux-64 = "*"
+gfortran_linux-64 = "*"
+clang = "*"
+clangxx = "*"
+llvm = "*"
+make = "*"
+cmake = "*"
+
+# Sys libs
+openssl = "*"
+curl = "*"
+git = "*"
+pkg-config = "*"
+#libgomp = "*"  # OpenMP support - TBD
+
+# Additional R package
+r-here = "*"
+r-dplyr = "*"
+r-coda = "*"
+r-distributions3 = "*"
+r-nlme = "*"
+r-rcpparmadillo = "*"
+

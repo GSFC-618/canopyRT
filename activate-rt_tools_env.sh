@@ -1,28 +1,38 @@
 #!/bin/bash
 # Activation script for RT Tools R Environment
+
+echo "Usage 'source activate-rt_tools_env.sh' not 'bash activate-rt_tools_env.sh'"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RT_TOOLS_ENV="${SCRIPT_DIR}/env"
 
+if [ -d "/efs/shared" ]; then
+  SHARED_PREFIX="/efs/shared"
+  PIXI_BIN="/efs/home/$(id -un)/.pixi/bin/pixi"
+  export PIXI_DETACHED_ENVIRONMENTS="${SHARED_PREFIX}/users/radiative_transfer/canopyRT/env/pcluster"
+else
+  SHARED_PREFIX="/shared"
+  PIXI_BIN="${HOME}/.pixi/bin/pixi"
+  export PIXI_DETACHED_ENVIRONMENTS="${SHARED_PREFIX}/users/radiative_transfer/canopyRT/env/jupyter"
+fi
+
 if [ ! -d "$RT_TOOLS_ENV" ]; then
-    echo "Error: RT Tools environment not found at $RT_TOOLS_ENV"
-    exit 1
+    echo "Error: RT Tools environment docs not found at $RT_TOOLS_ENV"
+    return 1
 fi
 
-cd "$RT_TOOLS_ENV"
-
-# Check if pixi is available
-# install: curl -fsSL https://pixi.sh/install.sh | sh
-if ! command -v pixi &> /dev/null; then
-    echo "Error: pixi not found. Please install pixi first."
-    echo "Example install: curl -fsSL https://pixi.sh/install.sh | sh"
-    exit 1
+if [ ! -x "$PIXI_BIN" ]; then
+  echo "ERROR: pixi not found at $PIXI_BIN"
+  echo "  Install: curl -fsSL https://pixi.sh/install.sh | sh"; return 1
 fi
+
+command -v conda &>/dev/null && [ -n "$CONDA_DEFAULT_ENV" ] && conda deactivate
+
 
 # Activate the environment
 echo "Activating RT Tools R Environment..."
-eval "$(pixi shell-hook)"
+cd "$RT_TOOLS_ENV"
+eval "$("$PIXI_BIN" shell-hook)"
+cd "$SCRIPT_DIR"
 
-echo "  RT Tools R Environment activated!"
 echo "  R version: $(R --version | head -1)"
-echo "  Environment location: $RT_TOOLS_ENV"
-echo "  Use 'exit' to deactivate"
+echo "  env       : $PIXI_DETACHED_ENVIRONMENTS"

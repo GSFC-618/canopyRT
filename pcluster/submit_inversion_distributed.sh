@@ -20,7 +20,7 @@
 #
 #   - OPTIONAL SLURM ARGS:
 #      - WALLTIME: ensure it is > CHUNK_SIZE-minutes long
-#      - CPUS: ensure n_cpus matches partition specs
+#      - CPUS: number of cpus per task (only relevant for parallelization in R)
 #      - array: capped at 20 simultaneous tasks
 #===============================================================================
 
@@ -33,18 +33,16 @@ OUTPUT_DIR="${PROJECT_ROOT}/results"
 CONFIG_FILE="${OUTPUT_DIR}/job_config-testrun.sh"
 
 # DATASET SPECIFIC INFO
-TOTAL_ROWS=6
-CHUNK_SIZE=2
+TOTAL_ROWS=50
+CHUNK_SIZE=25
 
-# SLURM OPTIONS
-MEM="16G"
+# SLURM OPTIONS 
+MEM="8G"
 WALLTIME="00:10:00"
-PARTITION="demand-16cpu"
-CPUS=16
 LOG_DIR="${OUTPUT_DIR}/logs"
 
 # OPTIONAL USER CHANGES:
-JOB_SCRIPT="${PROJECT_ROOT}/pcluster/run_inversion_distributed.sh"
+JOB_SCRIPT="${PROJECT_ROOT}/pcluster/distribute_inversion_tasks.sh"
 RSCRIPT="${PROJECT_ROOT}/pcluster/invert_leaf_refl_spectra_PROSPECT-pcluster.R"
 
 # END USER INPUTS
@@ -54,6 +52,9 @@ RSCRIPT="${PROJECT_ROOT}/pcluster/invert_leaf_refl_spectra_PROSPECT-pcluster.R"
 N_TASKS=$(( (TOTAL_ROWS + CHUNK_SIZE - 1) / CHUNK_SIZE ))
 mkdir -p "$LOG_DIR"
 mkdir -p "$OUTPUT_DIR"
+
+CPUS=1
+PARTITION="demand-8cpu"
 
 #--------------------------------------------------------------------------------------------------#
 ## Write config file — sourced by job script at runtime

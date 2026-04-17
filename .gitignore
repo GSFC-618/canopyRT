@@ -48,6 +48,15 @@ vignettes/*.pdf
 
 # plots
 Rplots.pdf
+R_Output/
+results/
 
 # SLURM chaff
 prospect_job*.*
+
+# Pixi environment 
+.pixi/
+*/.pixi/
+
+# IPNYNB
+.ipynb_checkpoints/

@@ -35,6 +35,8 @@ if (length(args) < 4) {
     "  end_row    : last row of chunk (integer)",
     "  data_dir   : path to input data directory",
     "  output_dir : path to output directory",
+    #"  compiled_dataset: compiled spectral reflectance RData",
+    #"  dataID     : dataID string in compiled_dataset",
     sep = "\n"
   ))
 }
@@ -43,6 +45,8 @@ start_row  <- as.integer(args[1])
 end_row    <- as.integer(args[2])
 data_dir   <- args[3]
 output_dir <- args[4]
+# compiled_dataset <- args[5] # e.g., NGEETropics_Leaf_Reflectance.RData
+# data_id <- args[6] #e.g., Panama2016
 
 if (is.na(start_row) || is.na(end_row)) {
   stop("ERROR: start_row and end_row must be valid integers.")
@@ -98,9 +102,7 @@ output_licor <- FALSE
 
 # Load data
 load(file.path(data_dir, "NGEETropics_Leaf_Reflectance.RData"))
-
 #--------------------------------------------------------------------------------------------------#
-
 # Import leaf spectra and metadata
 dataID  <- "Panama2016"
 dataset <- NGEETropics_leaf_reflectance[[paste0(dataID, "_leaf_refl")]]
@@ -150,7 +152,6 @@ output_sample_info_all <- data.frame(
 )
 head(output_sample_info_all)
 
-refl_spec_info2 <- output_sample_info_all
 names_output_sample_info <- names(output_sample_info_all)
 
 # ---- Subset to this chunk's rows ----
@@ -185,6 +186,11 @@ if (!file.exists(out.dir)) dir.create(out.dir, recursive = TRUE)
 # Chunk-specific subdir for per-sample MCMC trace PDFs
 chunk.out.dir <- file.path(out.dir, paste0("chunk_", chunk_label))
 if (!file.exists(chunk.out.dir)) dir.create(chunk.out.dir, recursive = TRUE)
+
+chunk_file <- function(obj_name) {
+  file.path(out.dir, sprintf("chunk_%s_%s.rds", chunk_label, obj_name))
+}
+
 #--------------------------------------------------------------------------------------------------#
 
 
@@ -198,6 +204,17 @@ output.LRT <- list(
 )
 
 mod.params <- array(NA, dim = c(chunk_nrows, 21))
+# Name mod.params columns
+mod.params <- as.data.frame(mod.params)
+names(mod.params) <- c(
+  "N.mu",      "N.q25",      "N.q975",
+  "Cab.mu",    "Cab.q25",    "Cab.q975",
+  "Car.mu",    "Car.q25",    "Car.q975",
+  "Cbrown.mu", "Cbrown.q25", "Cbrown.q975",
+  "Canth.mu",  "Canth.q25",  "Canth.q975",
+  "Cw.mu",     "Cw.q25",     "Cw.q975",
+  "Cm.mu",     "Cm.q25",     "Cm.q975"
+)
 # inv.samples <- NA
 # names: N.mu, N.q25, N.q975, Cab.mu, Cab.q25, Cab.q75, Car.mu, Car.q25, Car.q75, 
 # Cbrown.mu, Cbrown.q25, Cbrown.q75, Canth.mu, Canth.q25, Canth.q75,
@@ -312,113 +329,101 @@ system.time(
         
         abs_i <- row_indices[i]   # absolute row index for traceability
 
-        cat(sprintf("\n>>> [chunk row %d / %d | abs row %d] Inverting: %s\n",
-                    i, chunk_nrows, abs_i,
-                    unlist(refl_spec_info2[i, title_var])))
+        tryCatch({
+            cat(sprintf("\n>>> [chunk row %d / %d | abs row %d] Inverting: %s\n",
+                        i, chunk_nrows, abs_i,
+                        unlist(output_sample_info_all[i, title_var])))
+    
+            # ---- Run MCMC ----
+            obs <- unlist(sub_refl_data[i, ])
+            settings <- list(iterations = 75000)
+            samples <- BayesianTools::runMCMC(setup, sampler = "DEzs", settings = settings)    
+            samples_burned <- autoburnin(BayesianTools::getSample(samples, coda = TRUE),method = "gelman.plot")
+            coda::varnames(samples_burned) <- c("N", "Cab", "Car", "Cbrown", "Canth", "Cw", "Cm", "rsd")    
+            mean_estimates <- do.call(cbind, summary(samples_burned)[c("statistics", "quantiles")])
+            row.names(mean_estimates) <- c("N", "Cab", "Car", "Cbrown", "Canth", "Cw", "Cm", "rsd")
+        
+            # ---- MCMC trace PDF (written to chunk-specific subdir) ----
+            pdf_name <- paste0(unlist(output_sample_info_all[i, title_var]),"_abs", abs_i, "_MCMC_trace_diag.pdf")
+            grDevices::pdf(file = file.path(chunk.out.dir, pdf_name), 
+                           width = 8, height = 6, onefile = TRUE)        
+            par(mfrow = c(1, 1), mar = c(2, 2, 2, 2), oma = c(0.1, 0.1, 0.1, 0.1)) # B, L, T, R
+            plot(samples_burned)
+            dev.off()
+    
+            # ---- Error Envelope ----
+            # include process error in error envelop (i.e. generate prediction interval)
+            #n_target <- 1000
+            spec.length  <- 2101
+            param.samples <- do.call(rbind, samples_burned)
+            n_target      <- if (nrow(param.samples) < 1000) nrow(param.samples) else 1000
+            param.samples <- param.samples[sample(nrow(param.samples), n_target), ]
+            RT_pred       <- array(data = NA, c(n_target, 2101))
+        
+            cat("*** Calculating error stats ***\n")
+            for (r in seq_len(n_target)) {
+              RT_pred[r, ] <- rnorm(spec.length, rrtm::prospectd(param.samples[r, 1], param.samples[r, 2],
+                                                                 param.samples[r, 3], param.samples[r, 4],
+                                                                 param.samples[r, 5], param.samples[r, 6],
+                                                                 param.samples[r, 7])$reflectance,
+                                    param.samples[r, 8])
+            }
+    
+            # stats
+            p.refl.stats$lower[i, ] <- apply(RT_pred, 2, stats::quantile, probs = 0.05, na.rm = TRUE)
+            p.refl.stats$upper[i, ] <- apply(RT_pred, 2, stats::quantile, probs = 0.95, na.rm = TRUE)
+        
+            # Generate modelled spectra 
+            num_params   <- 7 # PROSPECT-D
+            input.params <- as.vector(unlist(mean_estimates[, 1]))[1:num_params]
+            LRT          <- prospectd(input.params[1], input.params[2], input.params[3], input.params[4], 
+                                      input.params[5], input.params[6], input.params[7])    
+            output_sample_info <- droplevels(output_sample_info_all[i, , drop = FALSE])
+        
+            output.LRT$Spec.Info[i, ]         <- unlist(lapply(output_sample_info, as.character))
+            output.LRT$obs.Reflectance[i, ]   <- as.vector(unlist(sub_refl_data[i, ]))
+            output.LRT$mod.Reflectance[i, ]   <- LRT$reflectance
+            output.LRT$mod.Transmittance[i, ] <- LRT$transmittance
+        
+            # ---- Extract parameter summary ----
+            get_est <- function(param, stat) {
+                mean_estimates[row.names(mean_estimates) == param,
+                               colnames(mean_estimates)  == stat]
+            }
+            mod.params[i, ] <- c(
+                get_est("N",      "Mean"), get_est("N",      "25%"),  get_est("N",      "97.5%"),
+                get_est("Cab",    "Mean"), get_est("Cab",    "25%"),  get_est("Cab",    "97.5%"),
+                get_est("Car",    "Mean"), get_est("Car",    "25%"),  get_est("Car",    "97.5%"),
+                get_est("Cbrown", "Mean"), get_est("Cbrown", "25%"),  get_est("Cbrown", "97.5%"),
+                get_est("Canth",  "Mean"), get_est("Canth",  "25%"),  get_est("Canth",  "97.5%"),
+                get_est("Cw",     "Mean"), get_est("Cw",     "25%"),  get_est("Cw",     "97.5%"),
+                get_est("Cm",     "Mean"), get_est("Cm",     "25%"),  get_est("Cm",     "97.5%")
+            )
+        
+  
+            rm(samples, samples_burned, input.params, LRT, mean_estimates,
+               param.samples, RT_pred, output_sample_info)
+    
+            cat("\n>>> Done with row", abs_i, "— starting next inversion\n\n")
+    
+            flush.console()
 
-        # ---- Run MCMC ----
-        obs <- unlist(sub_refl_data[i, ])
-        settings <- list(iterations = 75000)
-        samples <- BayesianTools::runMCMC(setup, sampler = "DEzs", settings = settings)    
-        samples_burned <- autoburnin(BayesianTools::getSample(samples, coda = TRUE),method = "gelman.plot")
-        coda::varnames(samples_burned) <- c("N", "Cab", "Car", "Cbrown", "Canth", "Cw", "Cm", "rsd")    
-        mean_estimates <- do.call(cbind, summary(samples_burned)[c("statistics", "quantiles")])
-        row.names(mean_estimates) <- c("N", "Cab", "Car", "Cbrown", "Canth", "Cw", "Cm", "rsd")
-    
-        # ---- MCMC trace PDF (written to chunk-specific subdir) ----
-        pdf_name <- paste0(unlist(refl_spec_info2[i, title_var]),"_abs", abs_i, "_MCMC_trace_diag.pdf")
-        grDevices::pdf(file = file.path(chunk.out.dir, pdf_name), 
-                       width = 8, height = 6, onefile = TRUE)        
-        par(mfrow = c(1, 1), mar = c(2, 2, 2, 2), oma = c(0.1, 0.1, 0.1, 0.1)) # B, L, T, R
-        plot(samples_burned)
-        dev.off()
+            saveRDS(output.LRT,   chunk_file("output_LRT"))
+            saveRDS(mod.params,   chunk_file("mod_params"))
+            saveRDS(p.refl.stats, chunk_file("p_refl_stats"))    
+            cat(sprintf(">>> Checkpoint saved after abs row %d\n", abs_i))
 
-        # ---- Error Envelope ----
-        # include process error in error envelop (i.e. generate prediction interval)
-        #n_target <- 1000
-        spec.length  <- 2101
-        param.samples <- do.call(rbind, samples_burned)
-        n_target      <- if (nrow(param.samples) < 1000) nrow(param.samples) else 1000
-        param.samples <- param.samples[sample(nrow(param.samples), n_target), ]
-        RT_pred       <- array(data = NA, c(n_target, 2101))
-    
-        cat("*** Calculating error stats ***\n")
-        for (r in seq_len(n_target)) {
-          RT_pred[r, ] <- rnorm(spec.length, rrtm::prospectd(param.samples[r, 1], param.samples[r, 2],
-                                                             param.samples[r, 3], param.samples[r, 4],
-                                                             param.samples[r, 5], param.samples[r, 6],
-                                                             param.samples[r, 7])$reflectance,
-                                param.samples[r, 8])
-        }
-
-        # stats
-        p.refl.stats$lower[i, ] <- apply(RT_pred, 2, stats::quantile, probs = 0.05, na.rm = TRUE)
-        p.refl.stats$upper[i, ] <- apply(RT_pred, 2, stats::quantile, probs = 0.95, na.rm = TRUE)
-    
-        # Generate modelled spectra 
-        num_params   <- 7 # PROSPECT-D
-        input.params <- as.vector(unlist(mean_estimates[, 1]))[1:num_params]
-        LRT          <- prospectd(input.params[1], input.params[2], input.params[3], input.params[4], 
-                                  input.params[5], input.params[6], input.params[7])    
-        output_sample_info <- droplevels(output_sample_info_all[i, , drop = FALSE])
-    
-        output.LRT$Spec.Info[i, ]         <- unlist(lapply(output_sample_info, as.character))
-        output.LRT$obs.Reflectance[i, ]   <- as.vector(unlist(sub_refl_data[i, ]))
-        output.LRT$mod.Reflectance[i, ]   <- LRT$reflectance
-        output.LRT$mod.Transmittance[i, ] <- LRT$transmittance
-    
-        # ---- Extract parameter summary ----
-        get_est <- function(param, stat) {
-            mean_estimates[row.names(mean_estimates) == param,
-                           colnames(mean_estimates)  == stat]
-        }
-        mod.params[i, ] <- c(
-            get_est("N",      "Mean"), get_est("N",      "25%"),  get_est("N",      "97.5%"),
-            get_est("Cab",    "Mean"), get_est("Cab",    "25%"),  get_est("Cab",    "97.5%"),
-            get_est("Car",    "Mean"), get_est("Car",    "25%"),  get_est("Car",    "97.5%"),
-            get_est("Cbrown", "Mean"), get_est("Cbrown", "25%"),  get_est("Cbrown", "97.5%"),
-            get_est("Canth",  "Mean"), get_est("Canth",  "25%"),  get_est("Canth",  "97.5%"),
-            get_est("Cw",     "Mean"), get_est("Cw",     "25%"),  get_est("Cw",     "97.5%"),
-            get_est("Cm",     "Mean"), get_est("Cm",     "25%"),  get_est("Cm",     "97.5%")
-        )
-    
-        setTxtProgressBar(pb, i)    
-        rm(samples, samples_burned, input.params, LRT, mean_estimates,
-           param.samples, RT_pred, output_sample_info)
-
-        cat("\n>>> Done with row", abs_i, "— starting next inversion\n\n")
-
-        flush.console()
-    
-      }  ## End inversion loop
+        }, error = function(e) {
+            cat(sprintf("\n---ERROR on abs row %d: %s — skipping.---\n", abs_i, conditionMessage(e)))
+        })
+        setTxtProgressBar(pb, i)  
+    }  ## End inversion loop
 )
 close(pb)
-#--------------------------------------------------------------------------------------------------#
-
-
-#--------------------------------------------------------------------------------------------------#
-# Name mod.params columns
-mod.params <- as.data.frame(mod.params)
-names(mod.params) <- c(
-  "N.mu",      "N.q25",      "N.q975",
-  "Cab.mu",    "Cab.q25",    "Cab.q975",
-  "Car.mu",    "Car.q25",    "Car.q975",
-  "Cbrown.mu", "Cbrown.q25", "Cbrown.q975",
-  "Canth.mu",  "Canth.q25",  "Canth.q975",
-  "Cw.mu",     "Cw.q25",     "Cw.q975",
-  "Cm.mu",     "Cm.q25",     "Cm.q975"
-)
-#--------------------------------------------------------------------------------------------------#
-
 
 #--------------------------------------------------------------------------------------------------#
 # Save chunk outputs as RDS for post-processing reassembly
 # Naming convention:  chunk_<XXXX>_<YYYY>_<object>.rds
-
-chunk_file <- function(obj_name) {
-  file.path(out.dir, sprintf("chunk_%s_%s.rds", chunk_label, obj_name))
-}
-
 # Metadata for reassembly: absolute row indices + sample info column names
 chunk_meta <- list(
   start_row              = start_row,

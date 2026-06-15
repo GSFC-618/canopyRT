@@ -29,12 +29,16 @@
 # USER INPUTS
 PROJECT_ROOT="/efs/shared/users/radiative_transfer/canopyRT"
 DATA_DIR="${PROJECT_ROOT}/data/compiled_data"
-OUTPUT_DIR="${PROJECT_ROOT}/results"
+OUTPUT_DIR="${PROJECT_ROOT}/temp-results"
 CONFIG_FILE="${OUTPUT_DIR}/job_config-testrun.sh"
 
 # DATASET SPECIFIC INFO
 TOTAL_ROWS=50
 CHUNK_SIZE=25
+
+# NOTE THESE TWO VARS ARE HARDCODED INTO THE INVERSION RScript (~lines 105-109)
+# COMPILED_DATASET="NGEETropics_Leaf_Reflectance.RData"
+# DATAID="Panama2016"
 
 # SLURM OPTIONS 
 MEM="8G"
@@ -54,7 +58,7 @@ mkdir -p "$LOG_DIR"
 mkdir -p "$OUTPUT_DIR"
 
 CPUS=1
-PARTITION="demand-8cpu"
+PARTITION="demand-8cpu-c7i"
 
 #--------------------------------------------------------------------------------------------------#
 ## Write config file — sourced by job script at runtime
@@ -66,6 +70,8 @@ RSCRIPT="${RSCRIPT}"
 DATA_DIR="${DATA_DIR}"
 OUTPUT_DIR="${OUTPUT_DIR}"
 LOG_DIR="${LOG_DIR}"
+# COMPILED_DATASET="${COMPILED_DATASET}"
+# DATAID="${DATAID}"
 TOTAL_ROWS=${TOTAL_ROWS}
 CHUNK_SIZE=${CHUNK_SIZE}
 CPUS=${CPUS}

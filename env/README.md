@@ -7,7 +7,7 @@ Shared R environment with development tools for radiative transfer dev
 ### Activate Environment
 ```bash
 # Navigate to tools directory
-cd /shared/users/radiative_transfer/canopyRT
+cd /shared/users-local/radiative_transfer/canopyRT
 
 # Activate environment - this may require pixi install if not installed/available
 source activate-rt_tools_env.sh
@@ -23,7 +23,7 @@ R
 #SBATCH --partition=demand-8cpu
 
 # Activate RT Tools environment
-source /shared/users/radiative_transfer/canopyRT/activate-rt_tools_env.sh
+source /shared/users-local/radiative_transfer/canopyRT/activate-rt_tools_env.sh
 
 # Run R analysis
 Rscript <script_name>.R

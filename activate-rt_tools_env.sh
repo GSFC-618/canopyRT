@@ -4,16 +4,13 @@
 echo "Usage 'source activate-rt_tools_env.sh' not 'bash activate-rt_tools_env.sh'"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RT_TOOLS_ENV="${SCRIPT_DIR}/env"
+echo $RT_TOOLS_ENV
 
-if [ -d "/efs/shared" ]; then
-  SHARED_PREFIX="/efs/shared"
-  PIXI_BIN="/efs/home/$(id -un)/.pixi/bin/pixi"
-  export PIXI_DETACHED_ENVIRONMENTS="${SHARED_PREFIX}/users/radiative_transfer/canopyRT/env/pcluster"
-else
-  SHARED_PREFIX="/shared"
-  PIXI_BIN="${HOME}/.pixi/bin/pixi"
-  export PIXI_DETACHED_ENVIRONMENTS="${SHARED_PREFIX}/users/radiative_transfer/canopyRT/env/jupyter"
-fi
+SHARED_PREFIX="/shared"
+PIXI_BIN="/home/$(id -un)/.pixi/bin/pixi"
+# which pixi
+unset PIXI_DETACHED_ENVIRONMENTS
+export PIXI_DETACHED_ENVIRONMENTS="${SHARED_PREFIX}/users-local/radiative_transfer/canopyRT/env/pcluster"
 
 if [ ! -d "$RT_TOOLS_ENV" ]; then
     echo "Error: RT Tools environment docs not found at $RT_TOOLS_ENV"
@@ -26,7 +23,6 @@ if [ ! -x "$PIXI_BIN" ]; then
 fi
 
 command -v conda &>/dev/null && [ -n "$CONDA_DEFAULT_ENV" ] && conda deactivate
-
 
 # Activate the environment
 echo "Activating RT Tools R Environment..."

@@ -7,9 +7,12 @@
 #SBATCH --output=logs/prospect_%A.out
 #SBATCH --error=logs/prospect_%A.err
 
-PROJECT_ROOT="/efs/shared/users/radiative_transfer/canopyRT/"
+PROJECT_ROOT="/shared/users-local/radiative_transfer/canopyRT/"
 DATA_DIR="${PROJECT_ROOT}/data/compiled_data/"
 OUTPUT_DIR="${PROJECT_ROOT}/temp/"
+
+cd $PROJECT_ROOT
+source activate-rt_tools_env.sh
 
 cd $PROJECT_ROOT
 source activate-rt_tools_env.sh
